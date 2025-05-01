@@ -1,0 +1,72 @@
+2025-03-20 08:12:58,861 - INFO - User 'tr' logged in successfully.
+2025-03-20 08:13:10,675 - ERROR - Error receiving/decrypting message: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-03-20 08:13:10,675 - ERROR - Empty data or client disconnected.
+2025-03-20 08:19:23,766 - INFO - User 'tr' logged in successfully.
+2025-03-20 08:19:55,073 - INFO - User 'f' logged in successfully.
+2025-03-20 08:19:59,135 - WARNING - Unknown request type: game_update
+2025-03-20 08:19:59,663 - WARNING - Unknown request type: game_update
+2025-03-20 08:20:03,233 - ERROR - Error receiving/decrypting message: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-03-20 08:20:03,233 - ERROR - Empty data or client disconnected.
+2025-03-23 18:53:39,515 - INFO - User 'yuval' logged in successfully.
+2025-03-23 18:54:58,537 - INFO - User 'tomer' logged in successfully.
+2025-03-23 18:55:02,355 - WARNING - Unknown request type: game_update
+2025-03-23 18:55:03,954 - WARNING - Unknown request type: game_update
+2025-03-23 18:55:47,149 - ERROR - Error receiving/decrypting message: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-03-23 18:55:47,149 - ERROR - Empty data or client disconnected.
+2025-03-23 18:55:49,410 - ERROR - Error receiving/decrypting message: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-03-23 18:55:49,410 - ERROR - Empty data or client disconnected.
+2025-03-24 21:10:06,434 - INFO - User 'werewr' logged in successfully.
+2025-03-24 21:10:16,048 - ERROR - Error receiving/decrypting message: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-03-24 21:10:16,048 - ERROR - Empty data or client disconnected.
+2025-03-24 21:11:17,288 - INFO - User 'dfg' logged in successfully.
+2025-03-24 21:11:20,285 - WARNING - Unknown request type: game_update
+2025-03-24 21:11:22,085 - ERROR - Empty data or client disconnected.
+2025-03-24 21:11:24,806 - ERROR - Empty data in handle_login()
+2025-03-24 21:11:24,806 - ERROR - Empty data or client disconnected.
+2025-03-25 07:32:17,291 - INFO - User 'tomer' logged in successfully.
+2025-03-25 07:33:14,232 - INFO - User 'dfg' logged in successfully.
+2025-03-25 07:33:27,264 - INFO - User 'hgf' logged in successfully.
+2025-03-25 07:33:29,820 - WARNING - Unknown request type: game_update
+2025-03-25 07:33:33,363 - WARNING - Unknown request type: game_update
+2025-03-25 07:34:18,402 - ERROR - Error receiving/decrypting message: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-03-25 07:34:18,402 - ERROR - Empty data or client disconnected.
+2025-04-26 14:43:52,335 - INFO - User 'tomer' logged in successfully.
+2025-04-26 14:44:14,619 - ERROR - Error receiving/decrypting message: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-04-26 14:44:14,619 - ERROR - Empty data or client disconnected.
+2025-04-26 17:19:09,363 - INFO - User 'tomer' logged in successfully.
+2025-04-26 17:19:28,575 - INFO - User '1212' logged in successfully.
+2025-04-26 17:19:31,784 - WARNING - Unknown request type: game_update
+2025-04-26 17:19:33,080 - WARNING - Unknown request type: game_update
+2025-04-26 17:19:39,955 - ERROR - Error receiving/decrypting message: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-04-26 17:19:39,955 - ERROR - Empty data or client disconnected.
+2025-04-26 17:19:40,776 - ERROR - Error receiving/decrypting message: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-04-26 17:19:40,777 - ERROR - Empty data or client disconnected.
+2025-04-26 17:21:33,217 - INFO - User 'tomer' logged in successfully.
+2025-04-26 17:21:41,232 - INFO - User 'rt' logged in successfully.
+2025-04-26 17:21:45,226 - WARNING - Unknown request type: game_update
+2025-04-26 17:21:45,811 - WARNING - Unknown request type: game_update
+2025-04-26 17:21:56,049 - ERROR - Error receiving/decrypting message: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-04-26 17:21:56,049 - ERROR - Empty data or client disconnected.
+2025-04-26 17:21:56,702 - ERROR - Error receiving/decrypting message: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-04-26 17:21:56,703 - ERROR - Empty data or client disconnected.
+2025-04-26 18:02:10,659 - INFO - User 't' logged in successfully.
+2025-04-26 18:02:18,822 - INFO - User 'gfg' logged in successfully.
+2025-04-26 18:02:20,823 - WARNING - Unknown request type: game_update
+2025-04-26 18:02:22,760 - WARNING - Unknown request type: game_update
+2025-04-26 18:07:21,228 - INFO - User 'tr' logged in successfully.
+2025-04-26 18:07:29,673 - INFO - User 'yt' logged in successfully.
+2025-04-26 18:07:31,463 - WARNING - Unknown request type: game_update
+2025-04-26 18:07:33,768 - WARNING - Unknown request type: game_update
+2025-04-26 18:08:22,252 - ERROR - Empty data in handle_login()
+2025-04-26 18:08:22,253 - ERROR - Empty data or client disconnected.
+2025-04-26 18:08:27,776 - INFO - User 't' logged in successfully.
+2025-04-26 18:08:36,682 - INFO - User 'vb' logged in successfully.
+2025-04-26 18:08:40,038 - WARNING - Unknown request type: game_update
+2025-04-26 18:08:40,039 - WARNING - Unknown request type: ready
+2025-04-26 18:08:41,746 - WARNING - Unknown request type: game_update
+2025-04-26 18:08:41,747 - WARNING - Unknown request type: ready
+2025-04-26 19:08:27,649 - INFO - Login failed: Invalid credentials
+2025-04-26 19:08:28,827 - WARNING - Unknown request type: login_request
+2025-04-26 19:08:44,749 - INFO - User 'yty' logged in successfully.
+2025-04-26 19:08:47,549 - ERROR - Error receiving/decrypting message: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-04-26 19:08:47,549 - ERROR - Empty data or client disconnected.
