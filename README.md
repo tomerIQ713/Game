@@ -22,3 +22,12 @@
 - Chess engine analysis
 - **SQLite / JSON / File I/O** for data persistence
 
+
+## Installation
+
+- Download the folders.
+- Run the install `install_dependencies.bat` file to download the necessary libraries.
+
+
+
+
