@@ -1,5 +1,7 @@
 # ChessMaster – Multiplayer Chess Game with AI Analysis
 
+> ⚠️ **Note:** This project is still under development and will be fully uploaded by **May 30th**.
+
 **ChessMaster** is a secure, full-featured multiplayer chess game built with Python and Pygame. The app uses a client-server architecture to enable real-time gameplay between users, and integrates the powerful Stockfish engine to analyze your games after completion.
 
 ##  Features
@@ -20,3 +22,4 @@
 - Stockfish for chess engine analysis
 - SQLite / JSON / File I/O for data persistence
 
+**The final version of the p
