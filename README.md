@@ -17,9 +17,8 @@
 
 ## Technologies Used
 
-- Python (Socket, Threading, OOP)
+- Python (**Socket, Threading, OOP**)
 - Pygame for GUI
-- Stockfish for chess engine analysis
-- SQLite / JSON / File I/O for data persistence
+- Chess engine analysis
+- **SQLite / JSON / File I/O** for data persistence
 
-**The final version of the p
