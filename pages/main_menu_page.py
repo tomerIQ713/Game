@@ -52,6 +52,7 @@ class MainMenuPage(BasePage):
             base_color="#d7fcd4",
             hovering_color="White"
         )
+
         
     def get_font(self, path, size):
         return pygame.font.Font(path, size)
@@ -67,6 +68,11 @@ class MainMenuPage(BasePage):
                 elif self.quit_button.checkForInput(mouse_pos):
                     pygame.quit()
                     sys.exit()
+                
+                elif self.play_friend_button.checkForInput(mouse_pos):
+                    self.manager.set_current_page("InviteFriendPage",
+                                  client=self.client, key=self.key)
+
                 elif self.signout_button.checkForInput(mouse_pos):
                     self.client.close()  # Close socket on signout
                     self.manager.set_current_page("LoginPage")
@@ -121,3 +127,4 @@ class MainMenuPage(BasePage):
         for btn in [self.play_button, self.options_button, self.quit_button, self.signout_button]:
             btn.changeColor(mouse_pos)
             btn.update(self.screen)
+        

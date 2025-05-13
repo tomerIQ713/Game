@@ -1,103 +1,104 @@
-import pygame
-import sys
-import os
-import re
-from termcolor import colored
+import pygame, json, select
 from CTkMessagebox import CTkMessagebox
-
-from frames.assets.button import Button, RadioButton
-from frames.assets.textBoxInput import TextInputBox
-
-from chess_board import ChessBoard
-from player import Player
-from helper import Helper
-
+from frames.assets.button import Button
 from base_page import BasePage
 
-
 class WaitingPageFriend(BasePage):
-    """
-    Waits for friend acceptance, showing friend_name_to_invite from game_state.
-    """
+    DOT_INTERVAL = 700      # ms
+    SOCKET_POLL  = 0        # non-blocking select
+
     def __init__(self, manager, client, key):
         super().__init__(manager)
-        
-        self.client = client
-        self.counter = 1
-        self.update_interval = 700
-        self.last_update = pygame.time.get_ticks()
+        self.client, self.key = client, key
+        self.counter, self.last = 1, pygame.time.get_ticks()
+        self.partial = ""     # buffer for split packets
 
-        self.go_back_button = Button(
-            image=None, pos=(640, 600),
-            text_input="BACK", font=self.get_font("frames/assets/font.ttf", 55),
-            base_color="White", hovering_color="Green"
-        )
-    
-    def get_font(self, path, size):
-        return pygame.font.Font(path, size)
+        self.cancel_btn = Button(
+            image=None, pos=(640, 620), text_input="CANCEL",
+            font=self.get_font("frames/assets/font.ttf", 50),
+            base_color="White", hovering_color="Green")
 
-    def handle_events(self, events):
-        mouse_pos = pygame.mouse.get_pos()
-        for event in events:
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if self.go_back_button.checkForInput(mouse_pos):
-                    self.manager.set_current_page("PlayPage", self.client)
+    # ───────── helpers ─────────
+    def get_font(self, path, size): return pygame.font.Font(path, size)
+
+    @staticmethod
+    def split_json(stream: str):
+        dec, out, i, n = json.JSONDecoder(), [], 0, len(stream)
+        while i < n:
+            while i < n and stream[i].isspace(): i += 1
+            if i >= n: break
+            try:
+                obj, j = dec.raw_decode(stream, i)
+                out.append(obj); i = j
+            except json.JSONDecodeError:
+                break
+        return out, i
+
+    # ───────── pygame loop ─────────
+    def handle_events(self, evts):
+        if any(e.type == pygame.MOUSEBUTTONDOWN and
+               self.cancel_btn.checkForInput(pygame.mouse.get_pos())
+               for e in evts):
+            self.manager.set_current_page("ProfilePage",
+                                          self.client, key=self.key)
 
     def update(self):
-        current_time = pygame.time.get_ticks()
-        if current_time - self.last_update > self.update_interval:
-            self.counter = (self.counter % 3) + 1
-            self.last_update = current_time
+        if pygame.time.get_ticks() - self.last > self.DOT_INTERVAL:
+            self.counter = self.counter % 3 + 1
+            self.last = pygame.time.get_ticks()
+
+        rdy, _, _ = select.select([self.client], [], [], self.SOCKET_POLL)
+        if not rdy: return
+
+        chunk = self.client.recv(4096)
+        print("DBG raw :", repr(chunk[:60]))        #  ← add this
+        self.partial += chunk.decode("utf-8", "replace")
+
+        packets, idx = self.split_json(self.partial)
+        self.partial = self.partial[idx:]
+
+        for pkt in packets:
+            if pkt.get("type") == "start_game":
+                gs = self.game_state
+                gs.selected_time_format = pkt["time_format"]
+                gs.game_id             = pkt["game_id"]
+                gs.my_color            = pkt["color"]
+                self.manager.set_current_page(
+                    "GameBoardPage", self.client,
+                    selected_time_format=pkt["time_format"],
+                    key=self.key,
+                    player_color=pkt["color"],
+                    current_turn="white",
+                    game_id=pkt["game_id"])
+                return
+            if pkt.get("type") == "error":
+                CTkMessagebox(title="Server error",
+                              message=pkt.get("msg", "Unknown error"),
+                              icon="cancel")
+                self.manager.set_current_page("ProfilePage",
+                                              self.client, key=self.key)
+                return
+
+            
 
     def draw(self):
-        THEMES = [
-            {
-                "bg": (0, 0, 0),          
-                "text": (255, 255, 255)
-            },
-            {
-                "bg": (255, 255, 255),
-                "text": (0, 0, 0)
-            },
-            {
-                "bg": (0, 70, 160),
-                "text": (255, 255, 255)
-            }
-        ]
+        th = [{"bg":(0,0,0),"text":(255,255,255)},
+              {"bg":(255,255,255),"text":(0,0,0)},
+              {"bg":(0,70,160),"text":(255,255,255)}][self.game_state.selected_theme]
+        self.screen.fill(th["bg"])
 
+        friend = self.game_state.friend_name_to_invite or "???"
+        dots   = "." * self.counter
+        msg    = f"Waiting for {friend} to accept{dots}"
+        font30 = self.get_font("frames/assets/font.ttf", 30)
+        self.screen.blit(font30.render(msg, True, th["text"]),
+                         font30.render(msg, True, th["text"]).get_rect(center=(640,260)))
 
-        THEMES.append(
-                
-            12)
-        
-        theme_index = self.game_state.selected_theme
-        theme = THEMES[theme_index]
-        self.screen.fill(theme["bg"])
+        font25 = self.get_font("frames/assets/font.ttf", 25)
+        for i, txt in enumerate((f"Time Format: {self.game_state.selected_time_format}",
+                                 f"Game Type:  {self.game_state.selected_game_type}")):
+            surf = font25.render(txt, True, th["text"])
+            self.screen.blit(surf, surf.get_rect(center=(640, 360 + i*40)))
 
-        if theme_index == 1:
-            self.go_back_button.base_color = (50, 50, 50)
-            self.go_back_button.hovering_color = (100, 100, 100)
-        else:
-            self.go_back_button.base_color = "White"
-            self.go_back_button.hovering_color = "Green"
-
-        friend_name = self.game_state.friend_name_to_invite or "???"
-
-        font_30 = self.get_font("frames/assets/font.ttf", 30)
-        dots_text = f"Waiting for friend '{friend_name}' to accept" + '.' * self.counter
-        wait_surf = font_30.render(dots_text, True, theme["text"])
-        wait_rect = wait_surf.get_rect(center=(640, 250))
-        self.screen.blit(wait_surf, wait_rect)
-
-        font_25 = self.get_font("frames/assets/font.ttf", 25)
-        info1 = font_25.render(f"Time Format: {self.game_state.selected_time_format}", True, theme["text"])
-        info1_rect = info1.get_rect(center=(640, 350))
-        self.screen.blit(info1, info1_rect)
-
-        info2 = font_25.render(f"Game Type: {self.game_state.selected_game_type}", True, theme["text"])
-        info2_rect = info2.get_rect(center=(640, 400))
-        self.screen.blit(info2, info2_rect)
-
-        mouse_pos = pygame.mouse.get_pos()
-        self.go_back_button.changeColor(mouse_pos)
-        self.go_back_button.update(self.screen)
+        self.cancel_btn.changeColor(pygame.mouse.get_pos())
+        self.cancel_btn.update(self.screen)

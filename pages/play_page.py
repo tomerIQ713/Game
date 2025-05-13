@@ -111,17 +111,21 @@ class PlayPage(BasePage):
                         self.manager.set_current_page(
                             "SpectateLobbyPage", client=self.client, key=self.key)
                     else:
-                        # Request a playable game from the server first
-                        self.send_message({
-                            "type": "request_game",
-                            "time": self.game_state.selected_time_format,
-                            "game_type": selected_type,
-                            "friend_username": None,
-                        })
                         if selected_type == "Random":
-                            self.manager.set_current_page("WaitingPageRandom", client=self.client, key=self.key)
-                        else:
-                            self.manager.set_current_page("InviteFriendPage", client=self.client, key=self.key)
+                            # ask server immediately for random pairing
+                            self.send_message({
+                                "type": "request_game",
+                                "time": self.game_state.selected_time_format,
+                                "game_type": "Random",
+                                "friend_username": None
+                            })
+                            self.manager.set_current_page("WaitingPageRandom",
+                                                          client=self.client, key=self.key)
+                        else:  # "Play a friend"
+                            # no packet yet – will be sent from InviteFriendPage
+                            self.manager.set_current_page("InviteFriendPage",
+                                                          client=self.client, key=self.key)
+                    
 
             # pass events to radio groups
             self.time_format_group.update(events)

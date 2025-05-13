@@ -106,31 +106,176 @@ class ChessServer:
     #               MAIN MESSAGE LOOP
     # ──────────────────────────────────────────────────────────────
     def _main_loop(self, sock):
-        while True:
-            msg = self._recv_json(sock)
-            if msg is None:
-                break
-            t = msg.get("type")
-            if t == "request_game":
-                self._queue_for_game(sock, msg["time"], msg["game_type"], msg.get("friend_username"))
-            elif t == "move":
+       while True:
+           msg = self._recv_json(sock)
+           if msg is None:
+               break
+           t = msg.get("type")
+
+           if t == "request_game":
+               self._queue_for_game(sock, msg["time"], msg["game_type"],
+                                    msg.get("friend_username"))
+           elif t == "move":
                 self._relay_move(sock, msg)
-            elif t == "list_games":
-                self._handle_list_games(sock)
-            elif t == "spectate_request":
+
+           elif t == "list_games":
+               self._handle_list_games(sock)
+
+           elif t == "spectate_request":
                 self._handle_spectate_request(sock, msg["game_id"])
-            else:
-                self._send_json(sock, {"type": "error", "msg": f"Unknown cmd {t}"})
+
+           elif t == "add_friend":
+                self._handle_add_friend(sock, msg["username"])
+
+           elif t == "list_friend_requests":
+                self._handle_list_friend_requests(sock)
+
+           elif t == "respond_friend_request":
+                self._handle_respond_friend(sock, msg["from_user"], msg["accept"])
+
+           elif t == "send_game_request":
+                self._handle_send_game_request(sock,
+                                               msg["to"], msg["time_format"])
+           elif t == "list_game_requests":
+                self._handle_list_game_requests(sock)
+
+           elif t == "respond_game_request":
+                self._handle_respond_game_request(sock,
+                                                  msg["from_user"], msg["accept"])
+
+
+           elif t == "view_profile":                 
+                self._handle_view_profile(sock)       
+
+           else:
+                self._send_json(sock, {"type": "error",
+                                       "msg": f"Unknown cmd {t}"})
+    
+    def _handle_send_game_request(self, sock, target, time_fmt):
+        me = self.clients[sock].get_username()
+        ok = self.db.send_game_request(me, target, time_fmt)
+        self._send_json(sock, {
+            "type": "send_game_request_ack",
+            "success": ok,
+            "msg": "Request sent!" if ok else "Cannot send request."
+        })
+    
+    def _find_socket_by_username(self, uname):
+        for s, c in self.clients.items():
+            if c.get_username() == uname:
+                return s
+        return None
+
+
+    def _handle_list_game_requests(self, sock):
+        me  = self.clients[sock].get_username()
+        lst = self.db.get_pending_game_requests(me)
+        self._send_json(sock, {"type": "game_requests", "list": lst})
+
+    def _handle_respond_game_request(self, sock, sender, accept: bool):
+        me = self.clients[sock].get_username()
+    
+        if accept:
+            time_fmt = self.db.accept_game_request(sender, me)
+            if not time_fmt:
+                self._send_json(sock, {"type": "respond_game_ack", "ok": False})
+                return
+    
+            # 1) tell the client the request was accepted
+            self._send_json(sock, {"type": "respond_game_ack", "ok": True})
+    
+            # 2) find the other player’s socket (if connected)
+            peer_sock = self._find_socket_by_username(sender)
+            if peer_sock:
+                self._send_json(peer_sock, {"type": "respond_game_ack", "ok": True})
+    
+            # 3) now queue both sides and send start_game
+            self._queue_for_game(sock,       time_fmt, "friend_game",
+                                 friend_username=sender)
+            if peer_sock:
+                self._queue_for_game(peer_sock, time_fmt, "friend_game",
+                                     friend_username=me)
+    
+        else:  # reject
+            self.db.reject_game_request(sender, me)
+            self._send_json(sock, {"type": "respond_game_ack", "ok": True})
+
+
+    
+    def _handle_add_friend(self, sock, target):
+        me  = self.clients[sock].get_username()
+        ok  = self.db.send_friend_request(me, target)
+        out = {"type": "add_friend_ack",
+               "success": ok,
+               "msg": "Request sent!" if ok else "Cannot send request."}
+        self._send_json(sock, out)
+
+    def _handle_list_friend_requests(self, sock):
+        me   = self.clients[sock].get_username()
+        lst  = self.db.get_pending_requests(me)
+        self._send_json(sock, {"type": "friend_requests", "list": lst})
+    
+    def _handle_respond_friend(self, sock, sender, accept: bool):
+        me = self.clients[sock].get_username()
+        if accept:
+            self.db.accept_request(sender, me)
+        else:
+            self.db.reject_request(sender, me)
+        self._send_json(sock, {"type": "respond_friend_ack", "ok": True})
+
+
+    # ──────────────────────────────────────────────────────────────
+    #                 PROFILE  LOOK-UP
+    # ──────────────────────────────────────────────────────────────
+    def _handle_view_profile(self, sock):
+        """
+        Send the logged-in user’s profile to the client.
+
+        Packet format expected by progfile_page.py:
+            {
+                "type"        : "profile_info",
+                "games_played": int,
+                "elo"         : int,
+                "friends"     : list[str],        # usernames
+                "as_white"    : [w, d, l],
+                "as_black"    : [w, d, l]
+            }
+        """
+        username = self.clients[sock].get_username()
+        stats    = self.db.get_profile_info(username)          # see database.py :contentReference[oaicite:0]{index=0}:contentReference[oaicite:1]{index=1}
+
+        if not stats:
+            self._send_json(sock, {"type": "error",
+                                   "msg":  "Profile not found"})
+            return
+
+        packet = {
+            "type":         "profile_info",
+            "games_played": stats["games"],     
+            "elo":          stats["elo"],
+            "friends":      stats["friends"],
+            "as_white":     stats["as_white"],
+            "as_black":     stats["as_black"]
+        }
+        self._send_json(sock, packet)
+
 
     # ──────────────────────────────────────────────────────────────
     #                 MATCHMAKING
     # ──────────────────────────────────────────────────────────────
-    def _queue_for_game(self, sock, time_fmt, game_type, friend=None):
-        self.clients[sock].set_status(f"waiting:{time_fmt}")
+    def _queue_for_game(self, sock, time_format, game_type,
+                    friend_username: str | None = None):
+        """
+        Put *sock* in the appropriate queue.
+
+        › game_type == "Random"      →   use the global random queue  
+        › game_type == "friend_game" →   pair with   friend_username
+        """
+        self.clients[sock].set_status(f"waiting:{time_format}")
         opp = next((s for s, p in self.clients.items()
-                    if s is not sock and p.get_status() == f"waiting:{time_fmt}"), None)
+                    if s is not sock and p.get_status() == f"waiting:{time_format}"), None)
         if opp:
-            self._start_game(sock, opp, time_fmt)
+            self._start_game(sock, opp, time_format)
         else:
             self._send_json(sock, {"type": "game_update", "status": "WAITING"})
 
