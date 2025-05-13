@@ -1,406 +1,277 @@
-import socket
-import threading
-import json
-import logging
-import os
-import sys
-    
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# server/server.py
+import socket, threading, json, logging, os, sys
 
-from player import Player  
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from player import Player
 from database import DatabaseHandler
 
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
 
+
 class ChessServer:
+    """
+    • Sends its public RSA key immediately after each TCP connection.
+    • Accepts either RSA-encrypted JSON or plain JSON.
+    • Creates an account automatically on the first login attempt if it
+      doesn’t exist yet.
+    • Supports: matchmaking, moves, game list for spectators, live spectating.
+    """
+
     def __init__(self):
-        logging.basicConfig(
-            filename="app.log", 
-            level=logging.DEBUG, 
-            format="%(asctime)s - %(levelname)s - %(message)s"
-        )
-        
-        self.host = '127.0.0.1'
-        self.port = 5555
-
-        self.db_handler = DatabaseHandler()
+        logging.basicConfig(filename="app.log",
+                            level=logging.DEBUG,
+                            format="%(asctime)s | %(levelname)s | %(message)s")
+        self.host, self.port = "127.0.0.1", 5555
         self.server_socket = None
+        self.db = DatabaseHandler()
 
-        # All connected clients: { client_socket: Player() }
-        self.clients = {}
+        self.clients: dict[socket.socket, Player] = {}
+        # active_games[gid] = {
+        #     "white": sock, "black": sock,
+        #     "current_turn": "white"|"black",
+        #     "time_format": str,
+        #     "spectators": [sock, ...],
+        #     "fen": str | None
+        # }
+        self.active_games: dict[str, dict] = {}
 
-        # Track active games in a dict: game_id -> { "white": sock, "black": sock, "current_turn": "white"/"black" }
-        self.active_games = {}
-
+    # ──────────────────────────────────────────────────────────────
+    #                   LIFECYCLE
+    # ──────────────────────────────────────────────────────────────
     def start_server(self):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((self.host, self.port))
         self.server_socket.listen()
-        print(f"Server listening on {self.host}:{self.port}")
+        print(f"Server running on {self.host}:{self.port}")
 
-        self.generate_keys()
-        print("GENERATED RSA KEYS")
+        self._make_rsa_keys()
 
-        self.accept_clients()
-
-    def accept_clients(self):
         while True:
-            client_socket, addr = self.server_socket.accept()
-            print(f"Client connected from {addr}")
+            sock, addr = self.server_socket.accept()
+            self.clients[sock] = Player()
+            print(f"Client {addr} connected")
+            threading.Thread(target=self._client_thread,
+                             args=(sock,), daemon=True).start()
 
-            self.clients[client_socket] = Player()
-            self.clients[client_socket].set_status("enc")
-
-            threading.Thread(target=self.handle_client, args=(client_socket,), daemon=True).start()
-
-    def handle_client(self, client_socket):
-        # 1) Send public key
-        self.set_encryption(client_socket)
-
-        # 2) Login
-        self.handle_login(client_socket)
-
-        # 3) Handle further requests
-        self.handle_req(client_socket)
-
-    def handle_req(self, client_socket):
-        while True:
-            data = self.get_message(client_socket)
-            if not data:
-                logging.error("Empty data or client disconnected.")
+    def _client_thread(self, sock: socket.socket):
+        try:
+            self._send_public_key(sock)
+            if not self._handle_login(sock):
                 return
+            self._main_loop(sock)
+        except (ConnectionResetError, BrokenPipeError):
+            pass
+        finally:
+            self._cleanup(sock)
 
-            try:
-                received_dict = json.loads(data)
-            except:
-                logging.error("Failed to parse JSON from client.")
-                continue
+    # ──────────────────────────────────────────────────────────────
+    #                   LOGIN
+    # ──────────────────────────────────────────────────────────────
+    def _handle_login(self, sock) -> bool:
+        pkt = self._recv_json(sock)
+        if not pkt:
+            return False
 
-            msg_type = received_dict.get('type')
+        cmd  = pkt.get("type")
+        user = pkt.get("username", "")
+        pwd  = pkt.get("password", "")
 
-            if msg_type == "request_game":
-                self.handle_game_request(
-                    client_socket, 
-                    received_dict.get('time'), 
-                    received_dict.get('game_type'), 
-                    received_dict.get('friend_username')
-                )
+        if cmd == "login_request":
+            if self.db.verify_user_credentials(user, pwd) or self.db.create_user(user, pwd):
+                return self._login_ok(sock, user, cmd)
+            self._login_fail(sock, cmd, "Invalid password")
+            return False
 
-            elif msg_type == "add_friend":
-                self.handle_friend_add(client_socket, received_dict['username'])
+        if cmd == "signup_request":
+            if self.db.create_user(user, pwd):
+                return self._login_ok(sock, user, cmd)
+            self._login_fail(sock, cmd, "Username taken")
+            return False
 
-            elif msg_type == "view_profile":
-                self.handle_profile_view(client_socket)
+        self._send_json(sock, {"type": "error", "msg": f"Bad login cmd {cmd}"})
+        return False
 
-            elif msg_type == "password_change":
-                self.handle_password_change(
-                    client_socket, 
-                    old_password=received_dict['old_password'],
-                    new_password=received_dict['new_password']
-                )
+    def _login_ok(self, sock, username, cmd):
+        self.clients[sock].set_username(username)
+        self.clients[sock].set_status("main_menu")
+        self._send_json(sock, {"type": cmd, "status": "OK"})
+        print(f"{username} logged in")
+        return True
 
-            elif msg_type == "move":
-                self.handle_game_move(client_socket, received_dict)
+    def _login_fail(self, sock, cmd, reason):
+        self._send_json(sock, {"type": cmd, "status": "ERROR", "reason": reason})
 
-            else:
-                logging.warning(f"Unknown request type: {msg_type}")
-
-    # ---------------------------
-    #    MATCHMAKING & GAMES
-    # ---------------------------
-    def handle_game_request(self, client_socket, time_format, game_type, other_username=None):
-        """
-        Put user in wait_for_game. If another user also waiting, match them -> start_game.
-        """
-        print(f"Got game request: {time_format}, {game_type}, friend: {other_username}")
-
-        self.clients[client_socket].set_status(f"wait_for_game:{time_format}")
-
-        matched_socket = None
-        for s, p in self.clients.items():
-            if s != client_socket and p.get_status() == f"wait_for_game:{time_format}":
-                matched_socket = s
+    # ──────────────────────────────────────────────────────────────
+    #               MAIN MESSAGE LOOP
+    # ──────────────────────────────────────────────────────────────
+    def _main_loop(self, sock):
+        while True:
+            msg = self._recv_json(sock)
+            if msg is None:
                 break
+            t = msg.get("type")
+            if t == "request_game":
+                self._queue_for_game(sock, msg["time"], msg["game_type"], msg.get("friend_username"))
+            elif t == "move":
+                self._relay_move(sock, msg)
+            elif t == "list_games":
+                self._handle_list_games(sock)
+            elif t == "spectate_request":
+                self._handle_spectate_request(sock, msg["game_id"])
+            else:
+                self._send_json(sock, {"type": "error", "msg": f"Unknown cmd {t}"})
 
-        if matched_socket:
-            print(f"Matched {self.clients[client_socket].get_username()} with {self.clients[matched_socket].get_username()}")
-            self.start_game(client_socket, matched_socket, time_format)
+    # ──────────────────────────────────────────────────────────────
+    #                 MATCHMAKING
+    # ──────────────────────────────────────────────────────────────
+    def _queue_for_game(self, sock, time_fmt, game_type, friend=None):
+        self.clients[sock].set_status(f"waiting:{time_fmt}")
+        opp = next((s for s, p in self.clients.items()
+                    if s is not sock and p.get_status() == f"waiting:{time_fmt}"), None)
+        if opp:
+            self._start_game(sock, opp, time_fmt)
         else:
-            message = {"type": "game_update", "status": "WAITING"}
-            self.send_message(client_socket, json.dumps(message).encode())
+            self._send_json(sock, {"type": "game_update", "status": "WAITING"})
 
-    def start_game(self, player1_socket, player2_socket, time_format):
-        """
-        We pick which socket is white or black, store them in active_games, and send OK.
-        Let's assume player1 is 'white' and player2 is 'black'.
-        """
-        game_id = f"{id(player1_socket)}_{id(player2_socket)}"
-        print(f"Game id: {game_id}")
-
-        self.active_games[game_id] = {
-            "white": player1_socket,
-            "black": player2_socket,
-            "current_turn": "white"
+    def _start_game(self, white, black, time_fmt):
+        gid = f"{id(white)}_{id(black)}"
+        self.active_games[gid] = {
+            "white": white,
+            "black": black,
+            "current_turn": "white",
+            "time_format": time_fmt,
+            "spectators": [],
+            "fen": None
         }
+        for s, col in ((white, "white"), (black, "black")):
+            self.clients[s].set_status("ingame")
+            self._send_json(s, {
+                "type": "game_start",
+                "game_id": gid,
+                "color": col,
+                "time_format": time_fmt,
+                "current_turn": "white"
+            })
+        print(f"Game {gid} started")
 
-        # Mark them ingame
-        self.clients[player1_socket].set_status("ingame")
-        self.clients[player2_socket].set_status("ingame")
-
-        message = {"type": "game_update", "status": "OK"}
-        self.send_message(player1_socket, json.dumps(message).encode())
-        self.send_message(player2_socket, json.dumps(message).encode())
-
-        print(f"Game started between {self.clients[player1_socket].get_username()} "
-              f"and {self.clients[player2_socket].get_username()} (game_id = {game_id})")
-
-    def handle_game_move(self, client_socket, move_data):
-        """
-        Move data format:
-            {
-              "type": "move",
-              "from": [row1, col1],
-              "to": [row2, col2]
-            }
-        We check if it's the correct player's turn, then forward to the opponent with "opponent_move".
-        We also switch current_turn.
-        """
-        game_id = None
-        player_color = None
-        # 1) Find which active game this socket belongs to
+    # ──────────────────────────────────────────────────────────────
+    #                 LIVE GAME LIST / SPECTATE
+    # ──────────────────────────────────────────────────────────────
+    def _handle_list_games(self, sock):
+        games = []
         for gid, info in self.active_games.items():
-            if info["white"] == client_socket:
-                game_id = gid
-                player_color = "white"
-                break
-            elif info["black"] == client_socket:
-                game_id = gid
-                player_color = "black"
-                break
+            games.append({
+                "game_id": gid,
+                "white": self.clients[info["white"]].get_username(),
+                "black": self.clients[info["black"]].get_username(),
+                "time_format": info.get("time_format", "-")
+            })
+        self._send_json(sock, {"type": "games_list", "games": games})
 
-        if not game_id:
-            print("handle_game_move: No active game found for this socket. Ignoring move.")
+    def _handle_spectate_request(self, sock, game_id):
+        info = self.active_games.get(game_id)
+        if not info:
+            self._send_json(sock, {"type": "spectate_accept",
+                                   "status": "ERROR", "reason": "Game not found"})
+            return
+        info.setdefault("spectators", []).append(sock)
+        self._send_json(sock, {"type": "spectate_accept",
+                               "status": "OK",
+                               "game_id": game_id,
+                               "fen": info.get("fen"),
+                               "color_to_move": info["current_turn"]})
+
+    # ──────────────────────────────────────────────────────────────
+    #                 MOVE RELAY
+    # ──────────────────────────────────────────────────────────────
+    def _relay_move(self, sock, data):
+        gid = data.get("game_id")
+        info = self.active_games.get(gid)
+        if not info:
+            self._send_json(sock, {"type": "move_ack", "status": "ERROR", "reason": "No such game"})
             return
 
-        game_info = self.active_games[game_id]
-        if game_info["current_turn"] != player_color:
-            # Not this player's turn
-            print(f"handle_game_move: Not {player_color}'s turn. Ignoring move.")
-            # Optionally send an error
-            error_msg = {
-                "type": "move",
-                "status": "ERROR",
-                "reason": "Not your turn"
-            }
-            self.send_message(client_socket, json.dumps(error_msg).encode())
+        mover = "white" if info["white"] is sock else "black"
+        if info["current_turn"] != mover:
+            self._send_json(sock, {"type": "move_ack", "status": "ERROR", "reason": "Not your turn"})
             return
 
-        # 2) It's the correct turn, so forward the move to the opponent
-        if player_color == "white":
-            opponent_socket = game_info["black"]
-            game_info["current_turn"] = "black"
-        else:
-            opponent_socket = game_info["white"]
-            game_info["current_turn"] = "white"
-
-        forward_message = {
+        packet = {
             "type": "opponent_move",
-            "from": move_data.get("from"),
-            "to": move_data.get("to")
+            "from": data["from"],
+            "to":   data["to"],
+            "clock": data.get("clock")
         }
-        self.send_message(opponent_socket, json.dumps(forward_message).encode())
+        if "fen" in data:                 # include latest snapshot
+            packet["fen"] = data["fen"]
+            info["fen"] = data["fen"]
 
-        print(f"Forwarded {player_color}'s move {forward_message} to opponent")
+        opp = info["black"] if mover == "white" else info["white"]
+        self._send_json(opp, packet)
+        self._send_json(sock, {"type": "move_ack", "status": "OK"})
 
-    # ---------------------------
-    #     LOGIN & SIGNUP
-    # ---------------------------
-    def handle_login(self, client_socket):
-        data = self.get_message(client_socket)
-        if not data:
-            logging.error("Empty data in handle_login()")
-            return
-
-        try:
-            received_dict = json.loads(data)
-        except:
-            logging.error("Could not parse login data.")
-            return
-
-        msg_type = received_dict.get('type', '')
-        if msg_type not in ["login_request", "signup_request"]:
-            logging.error(f"Unknown login command {msg_type}")
-            return
-
-        username = received_dict['username']
-        password = received_dict['password']
-        self.clients[client_socket].set_status("login")
-
-        if msg_type == "login_request":
-            print("S: Step 1")
+        # broadcast to spectators
+        for spec in list(info["spectators"]):
             try:
-                self.db_handler.create_user(username, password)
-                response = {"type": "login_request", "status": "OK"}
-                client_socket.send(json.dumps(response).encode('utf-8'))
+                self._send_json(spec, packet)
+            except OSError:               # drop dead sockets
+                info["spectators"].remove(spec)
 
-                self.clients[client_socket].set_username(username)
-                self.clients[client_socket].set_status("main_menu")
-                logging.info(f"User '{username}' logged in successfully.")
-            except:
-                if self.db_handler.verify_user_credentials(username, password):
-                    print("S: Step 2")
-                    response = {"type": "login_request", "status": "OK"}
-                    client_socket.send(json.dumps(response).encode('utf-8'))
+        info["current_turn"] = "black" if mover == "white" else "white"
 
-                    self.clients[client_socket].set_username(username)
-                    self.clients[client_socket].set_status("main_menu")
-                    logging.info(f"User '{username}' logged in successfully.")
-                else:
-                    response = {
-                        "type": "login_request",
-                        "status": "ERROR",
-                        "reason": "Invalid credentials"
-                    }
-                    client_socket.send(json.dumps(response).encode('utf-8'))
-                    logging.info(f"Invalid login attempt for '{username}'.")
+    # ──────────────────────────────────────────────────────────────
+    #           ENCRYPTION  /  IO HELPERS
+    # ──────────────────────────────────────────────────────────────
+    def _make_rsa_keys(self):
+        self._priv = rsa.generate_private_key(65537, 2048)
+        self._pub  = self._priv.public_key()
 
-        elif msg_type == "signup_request":
-            created = self.db_handler.create_user(username, password)
-            if created:
-                response = {"type": "signup_request", "status": "OK"}
-                client_socket.send(json.dumps(response).encode('utf-8'))
+    def _send_public_key(self, sock):
+        pem = self._pub.public_bytes(serialization.Encoding.PEM,
+                                     serialization.PublicFormat.SubjectPublicKeyInfo)
+        sock.send(pem)
 
-                self.clients[client_socket].set_username(username)
-                self.clients[client_socket].set_status("main_menu")
-                logging.info(f"User '{username}' created and logged in.")
-            else:
-                response = {
-                    "type": "signup_request",
-                    "status": "ERROR",
-                    "reason": "Username taken"
-                }
-                client_socket.send(json.dumps(response).encode('utf-8'))
-                logging.info(f"Signup failed: '{username}' is already taken.")
-
-    # ---------------------------
-    #    FRIENDS & PROFILE
-    # ---------------------------
-    def handle_friend_add(self, client_socket, friend_username):
-        current_username = self.clients[client_socket].get_username()
-        print(f"Got a friend add request, from '{current_username}' to '{friend_username}'")
-
-        friend_record = self.db_handler.get_user_by_username(friend_username)
-        if not friend_record:
-            print(f"Friend add failed: '{friend_username}' does not exist.")
-            response = {
-                "type": "add_friend",
-                "status": "ERROR",
-                "reason": "User does not exist"
-            }
-            self.send_message(client_socket, json.dumps(response).encode())
-            return
-
-        self.db_handler.update_friends(current_username, friend_username)
-        self.clients[client_socket].add_friend(friend_username)
-
-        response = {"type": "add_friend", "status": "OK"}
-        self.send_message(client_socket, json.dumps(response).encode())
-        print(f"'{friend_username}' added to '{current_username}' friends list in DB.")
-
-    def handle_profile_view(self, client_socket):
-        current_username = self.clients[client_socket].get_username()
-        profile_info = self.db_handler.get_profile_info(current_username)
-
-        if not profile_info:
-            response = {
-                "type": "profile_info",
-                "status": "ERROR",
-                "reason": "User not found"
-            }
-        else:
-            response = {
-                "type": "profile_info",
-                "status": "OK",
-                "games_played": profile_info["games"],
-                "elo": profile_info["elo"],
-                "as_white": profile_info["as_white"],
-                "as_black": profile_info["as_black"],
-                "friends": profile_info["friends"]
-            }
-
-        self.send_message(client_socket, json.dumps(response).encode())
-
-    # ---------------------------
-    #  PASSWORD CHANGE
-    # ---------------------------
-    def handle_password_change(self, client_socket, old_password, new_password):
-        current_username = self.clients[client_socket].get_username()
-        print(f"Got a password change request from '{current_username}' -> '{new_password}'")
-
-        if not self.db_handler.verify_user_credentials(current_username, old_password):
-            print("Old password does not match. Password update failed.")
-            response = {
-                "type": "password_change",
-                "status": "ERROR",
-                "reason": "Old password is incorrect"
-            }
-            self.send_message(client_socket, json.dumps(response).encode())
-            return
-
-        success = self.db_handler.update_password(current_username, new_password)
-        if success:
-            print("Password updated successfully.")
-            response = {"type": "password_change", "status": "OK"}
-        else:
-            print("Password update failed. Possibly user not found?")
-            response = {
-                "type": "password_change",
-                "status": "ERROR",
-                "reason": "User not found"
-            }
-
-        self.send_message(client_socket, json.dumps(response).encode())
-
-    # ---------------------------
-    #   NETWORKING / ENCRYPTION
-    # ---------------------------
-    def send_message(self, client_socket, message):
-        client_socket.send(message)
-
-    def generate_keys(self):
-        self.private_key = rsa.generate_private_key(
-            public_exponent=65537,
-            key_size=2048
-        )
-        self.public_key = self.private_key.public_key()
-
-    def set_encryption(self, client_socket):
-        pem = self.public_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
-        )
-        client_socket.send(pem)
-
-    def get_message(self, client_socket):
+    def _recv_json(self, sock):
         try:
-            data = client_socket.recv(4096)
-            if not data:
+            raw = sock.recv(4096)
+            if not raw:
                 return None
+            if raw.lstrip()[:1] in (b'{', b'['):
+                return json.loads(raw.decode("utf-8"))
 
-            decrypted = self.private_key.decrypt(
-                data,
-                padding.OAEP(
-                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                    algorithm=hashes.SHA256(),
-                    label=None
-                )
-            )
-            return decrypted.decode('utf-8')
+            try:
+                plain = self._priv.decrypt(
+                    raw,
+                    padding.OAEP(mgf=padding.MGF1(hashes.SHA256()),
+                                 algorithm=hashes.SHA256(), label=None))
+                return json.loads(plain.decode("utf-8"))
+            except (ValueError, TypeError):
+                logging.warning("Undecipherable packet dropped")
+                return None
         except Exception as e:
-            logging.error(f"Error receiving/decrypting message: {e}")
+            logging.error(f"_recv_json exception: {e}")
             return None
 
+    def _send_json(self, sock, obj: dict):
+        try:
+            sock.send(json.dumps(obj, separators=(',', ':')).encode("utf-8"))
+        except OSError:
+            pass
+
+    # ──────────────────────────────────────────────────────────────
+    #                   CLEAN-UP
+    # ──────────────────────────────────────────────────────────────
+    def _cleanup(self, sock):
+        print("Client disconnected")
+        try:
+            sock.close()
+        except OSError:
+            pass
+        self.clients.pop(sock, None)
+        for gid in [g for g, i in self.active_games.items() if sock in (i["white"], i["black"])]:
+            del self.active_games[gid]
+
+
 if __name__ == "__main__":
-    server = ChessServer()
-    server.start_server()
+    ChessServer().start_server()

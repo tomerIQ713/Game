@@ -25,61 +25,56 @@ class LoginPage(BasePage):
         self.input_boxes = [self.username_box, self.password_box]
         self.error_message = ""
 
-        self.server_ip = '127.0.0.1'
-        self.server_port = 5555
-
-        # Create socket
+        # ───── socket + RSA handshake ─────
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.client.connect((self.server_ip, self.server_port))
-        print(f"Connected to server ({self.server_ip}, {self.server_port})")
+        self.client.connect(("127.0.0.1", 5555))
+        self.public_key = serialization.load_pem_public_key(self.client.recv(4096))
 
-        # Receive the server's public key
-        self.get_public_key()
-        print("GOT KEY")
-
-        # LOGIN button
         self.login_button = Button(
-            image=None,
-            pos=(640, 680),
-            text_input="LOGIN",
-            font=pygame.font.SysFont(None, 45),
-            base_color="White",
-            hovering_color="Green"
+            image=None, pos=(640, 680),
+            text_input="LOGIN", font=pygame.font.SysFont(None, 45),
+            base_color="White", hovering_color="Green"
         )
 
     def handle_events(self, events):
-        mouse_pos = pygame.mouse.get_pos()
-
-        for event in events:
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if self.login_button.checkForInput(mouse_pos):
-                    if not self.username_box.text or not self.password_box.text:
-                        self.error_message = "All fields are required!"
-                    else:
-                        self.game_state.username = self.username_box.text
-                        message = {
-                            "type": "login_request",
-                            "username": self.username_box.text,
-                            "password": self.password_box.text
-                        }
-                        self.send_message(message)
-
-                        data = self.client.recv(1024).decode('utf-8')
-                        if not data:
-                            return
-                        received_dict = json.loads(data)
-
-                        # If login is OK, move to MainMenuPage
-                        if received_dict.get('status') == 'OK':
-                            self.manager.set_current_page(
-                                "MainMenuPage",
-                                client=self.client,
-                                key=self.public_key
-                            )
-
-            # Let the input boxes handle events
+        mouse = pygame.mouse.get_pos()
+        for e in events:
+            if e.type == pygame.MOUSEBUTTONDOWN:
+                if self.login_button.checkForInput(mouse):
+                    self.try_login()
             for box in self.input_boxes:
-                box.handle_event(event)
+                box.handle_event(e)
+    def try_login(self):
+        if not self.username_box.text or not self.password_box.text:
+            self.error_message = "All fields are required!"
+            return
+
+        msg = {"type": "login_request",
+               "username": self.username_box.text,
+               "password": self.password_box.text}
+
+        # compress JSON → shorter than RSA OAEP limit
+        payload = json.dumps(msg, separators=(',', ':')).encode()
+        cipher = self.public_key.encrypt(
+            payload,
+            padding.OAEP(mgf=padding.MGF1(hashes.SHA256()),
+                         algorithm=hashes.SHA256(),
+                         label=None)
+        )
+        self.client.send(cipher)
+
+        reply = self.client.recv(1024).decode("utf-8")
+        if not reply:
+            self.error_message = "Server closed connection"
+            return
+
+        resp = json.loads(reply)
+        if resp.get("status") == "OK":
+            self.manager.set_current_page("MainMenuPage",
+                                          client=self.client,
+                                          key=self.public_key)
+        else:
+            self.error_message = resp.get("reason", "Login failed")
 
     def send_message(self, message):
         """
@@ -165,12 +160,9 @@ class LoginPage(BasePage):
             print(colored("THE PASSWORD IS WEAK", 'red'))
 
     def update(self):
-        """
-        Update logic for each frame.
-        """
         for box in self.input_boxes:
             box.update()
-
+            
     def draw(self):
         THEMES = [
             {

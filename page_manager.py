@@ -3,7 +3,7 @@ import sys
 from game_state import GameState
 
 class PageManager:
-    def __init__(self, screen_width=1280, screen_height=720):
+    def __init__(self, screen_width=1100, screen_height=600):
         self.screen = pygame.display.set_mode((screen_width, screen_height))
         pygame.display.set_caption("Menu")
 
