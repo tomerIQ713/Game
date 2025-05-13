@@ -70,3 +70,103 @@
 2025-04-26 19:08:44,749 - INFO - User 'yty' logged in successfully.
 2025-04-26 19:08:47,549 - ERROR - Error receiving/decrypting message: [WinError 10054] An existing connection was forcibly closed by the remote host
 2025-04-26 19:08:47,549 - ERROR - Empty data or client disconnected.
+2025-05-01 23:26:02,709 - INFO - User 'tomer123' logged in successfully.
+2025-05-01 23:26:09,815 - INFO - User 'tomer121212' logged in successfully.
+2025-05-01 23:26:13,324 - WARNING - Unknown request type: game_update
+2025-05-01 23:26:24,568 - WARNING - Unknown request type: game_update
+2025-05-01 23:26:24,568 - WARNING - Unknown request type: ready
+2025-05-01 23:26:25,766 - WARNING - Unknown request type: game_update
+2025-05-01 23:26:25,766 - WARNING - Unknown request type: ready
+2025-05-01 23:27:07,263 - ERROR - Error receiving/decrypting message: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-01 23:27:07,264 - ERROR - Empty data or client disconnected.
+2025-05-10 14:32:17,005 - INFO - User 'tomer12' logged in successfully.
+2025-05-10 14:32:19,709 - INFO - User 'rere' logged in successfully.
+2025-05-10 14:32:46,486 - INFO - User 'tr' logged in successfully.
+2025-05-10 14:32:56,081 - INFO - User 'fg' logged in successfully.
+2025-05-10 14:33:00,506 - WARNING - Unknown request type: game_update
+2025-05-10 14:33:00,507 - WARNING - Unknown request type: ready
+2025-05-10 14:33:01,896 - WARNING - Unknown request type: game_update
+2025-05-10 14:33:01,902 - WARNING - Unknown request type: ready
+2025-05-10 14:34:06,965 - INFO - User 'TR' logged in successfully.
+2025-05-10 14:34:30,419 - INFO - User 'gfh' logged in successfully.
+2025-05-10 14:34:33,437 - WARNING - Unknown request type: game_update
+2025-05-10 14:34:33,438 - WARNING - Unknown request type: ready
+2025-05-10 14:34:34,412 - WARNING - Unknown request type: game_update
+2025-05-10 14:34:34,412 - WARNING - Unknown request type: ready
+2025-05-10 14:34:39,775 - ERROR - Error receiving/decrypting message: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 14:34:39,775 - ERROR - Empty data or client disconnected.
+2025-05-10 14:34:41,346 - ERROR - Empty data or client disconnected.
+2025-05-10 16:27:08,907 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 16:29:46,495 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 16:29:53,109 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 16:32:40,855 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 16:32:41,506 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 16:33:30,456 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 16:33:31,173 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 16:38:00,246 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 16:38:03,110 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 16:40:47,353 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 16:40:47,814 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 16:42:14,502 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 16:43:28,204 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 16:43:29,511 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 16:49:48,804 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 16:49:50,593 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 16:52:50,060 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 16:52:50,707 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 16:54:23,986 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 16:54:24,544 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 16:56:33,231 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 16:56:47,855 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 16:57:26,711 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 17:04:32,891 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 17:05:15,530 - ERROR - _recv_json exception: 'utf-8' codec can't decode bytes in position 7-8: invalid continuation byte
+2025-05-10 17:06:11,963 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-10 17:07:33,022 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 07:48:25,251 - ERROR - _recv_json exception: 'utf-8' codec can't decode byte 0xa5 in position 1: invalid start byte
+2025-05-11 08:05:04,464 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:05:08,140 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:14:49,230 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:14:51,329 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:15:08,550 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:16:49,184 - ERROR - _recv_json exception: 'utf-8' codec can't decode byte 0xa1 in position 4: invalid start byte
+2025-05-11 08:17:36,602 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:17:37,384 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:19:42,720 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:19:44,607 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:22:39,432 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:22:41,124 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:22:43,610 - ERROR - _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:29:34,174 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:30:36,075 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:31:11,700 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:33:01,426 | ERROR | _recv_json exception: 'utf-8' codec can't decode byte 0xe6 in position 2: invalid continuation byte
+2025-05-11 08:34:27,053 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:34:28,854 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:35:44,498 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:35:52,825 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:36:21,997 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:36:35,913 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:37:55,858 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:38:46,756 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:42:36,647 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:46:07,387 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:46:09,788 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:47:47,825 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:50:00,225 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:50:01,788 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 08:52:22,169 | ERROR | _recv_json exception: 'utf-8' codec can't decode byte 0x91 in position 3: invalid start byte
+2025-05-11 08:52:30,761 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 23:43:49,035 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 23:49:17,797 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 23:49:20,698 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 23:51:42,529 | ERROR | _recv_json exception: 'utf-8' codec can't decode byte 0xc6 in position 1: invalid continuation byte
+2025-05-11 23:51:52,937 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 23:51:53,541 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 23:55:46,378 | ERROR | _recv_json exception: 'utf-8' codec can't decode byte 0xa3 in position 1: invalid start byte
+2025-05-11 23:57:18,480 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 23:57:19,218 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 23:57:20,053 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 23:57:21,347 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 23:57:22,490 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-05-11 23:57:24,930 | ERROR | _recv_json exception: [WinError 10054] An existing connection was forcibly closed by the remote host

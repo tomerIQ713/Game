@@ -92,44 +92,53 @@ class WaitingPageRandom(BasePage):
 
     def check_for_match(self):
         """
-        This loop runs in a separate thread so we don't freeze the main Pygame loop.
-        We repeatedly call receive_messages() and handle all JSON objects it returns.
+        Polls the server every 2 s.
+        • On {"type":"game_start", …}  →  opens the board and PASSES the info along.
+        • Keeps compatibility with legacy {"type":"game_update","status":"OK"}.
         """
-        print("[DEBUG] check_for_match thread started. match_searching =", self.match_searching)
+        print("[DEBUG] check_for_match thread started")
         while self.match_searching:
-            print("[DEBUG] check_for_match loop - requesting server updates...")
             time.sleep(2)
-            
-            messages = self.receive_messages()
-            for data in messages:
-                print(f"[DEBUG] Received data from server: {data}")
-                if data.get("type") == "game_update":
-                    status = data.get("status")
-                    if status == "OK":
-                        print("[DEBUG] Server responded with OK status.")
-                        self.match_searching = False
-                        print("[DEBUG] Sending final OK to server.")
-                        self.send_message({"type": "game_update", "status": "OK"})
-                        print("[DEBUG] Transitioning to GameBoardPage.")
+            for msg in self.receive_messages():
+                print("[DEBUG] Received:", msg)
 
-                        self.send_message({'type': 'ready'})
+                # ── preferred packet ──
+                if msg.get("type") == "game_start":
+                    self.match_searching = False     # stop the thread
+                    self.manager.set_current_page(
+                        "GameBoardPage",
+                        self.client,
+                        selected_time_format=msg["time_format"],
+                        key=self.key,
+                        player_color=msg["color"],
+                        current_turn=msg["current_turn"],
+                        game_id=msg["game_id"]
+                    )
+                    return
+
+                # ── legacy packet (still supported) ──
+                if msg.get("type") == "game_update":
+                    st = msg.get("status")
+                    if st == "OK":
+                        self.match_searching = False
                         self.manager.set_current_page(
                             "GameBoardPage",
                             self.client,
                             selected_time_format=self.game_state.selected_time_format,
-                            key=self.key
+                            key=self.key,
+                            player_color="white",          # fallback assumption
+                            current_turn="white",
+                            game_id=None
                         )
                         return
-
-                    elif status == "WAITING":
-                        print("[DEBUG] Server says WAITING. Still searching for a match...")
-
-                    elif status == "LEAVE":
-                        print("[DEBUG] Server told us to leave matchmaking. Stopping search.")
+                    if st == "WAITING":
+                        print("[DEBUG] Waiting for opponent…")
+                    if st == "LEAVE":
                         self.match_searching = False
                         return
+        print("[DEBUG] check_for_match thread ended")
 
-        print("[DEBUG] check_for_match thread exiting. match_searching =", self.match_searching)
+
 
     def send_message(self, message_dict):
         """

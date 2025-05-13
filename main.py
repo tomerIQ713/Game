@@ -14,6 +14,8 @@ from pages.theme_page import ThemesPage
 from pages.progfile_page import ProfilePage
 from pages.add_friend_page import AddFriendPage
 from pages.change_password_page import ChangePasswordPage
+from pages.SpectateLobbyPage import SpectateLobbyPage
+from pages.SpectateGamePage import SpectateGamePage
 
 def main():
     pygame.init()
@@ -32,6 +34,8 @@ def main():
     manager.register_page("ProfilePage", ProfilePage)
     manager.register_page("AddFriendPage", AddFriendPage)
     manager.register_page("ChangePasswordPage", ChangePasswordPage)
+    manager.register_page("SpectateLobbyPage", SpectateLobbyPage)
+    manager.register_page("SpectateGamePage", SpectateGamePage)
     
     manager.set_current_page("LoginPage")
     manager.run()

@@ -1,146 +1,169 @@
+# engine/chess_engine.py   (or wherever you import ChessEngine from)
+import pathlib
 import chess
 import chess.engine
 
+
 class ChessEngine:
+    """
+    Thin wrapper around a local Stockfish binary.
+
+    • get_best_moves      – top-N moves with centipawn scores
+    • board_to_fen        – convert your own 2-D list representation → FEN
+    • evaluate_position   – Stockfish evaluation or mate announcement
+    • evaluate_move       – delta score, best reply, friendly labels
+    • tuple_to_uci        – ((row1, col1), (row2, col2)) -> \"e2e4\"
+    """
+
+    # ------------------------------------------------------------------ #
     def __init__(self, stockfish_path="stockfish/stockfish.exe", depth=20):
-        """
-        Initialize the ChessEngine with Stockfish path and analysis depth.
-        """
-        self.stockfish_path = stockfish_path
+        path = pathlib.Path(stockfish_path)
+        if not path.is_file():
+            raise FileNotFoundError(f"Stockfish binary not found at {path}")
+        self.stockfish_path = str(path)
         self.depth = depth
-    
 
-    def get_best_moves(self, fen, top_n=3):
-        """
-        Analyzes a FEN position and returns the top `top_n` best moves.
-        """
-        engine = chess.engine.SimpleEngine.popen_uci(self.stockfish_path)
+    # ------------------------------------------------------------------ #
+    #                           CORE HELPERS
+    # ------------------------------------------------------------------ #
+    def _open(self):
+        """Return a running SimpleEngine; caller must close()."""
+        return chess.engine.SimpleEngine.popen_uci(self.stockfish_path)
+
+    # ------------------------------------------------------------------ #
+    #                 PUBLIC HIGH-LEVEL METHODS
+    # ------------------------------------------------------------------ #
+    def get_best_moves(self, fen: str, top_n: int = 3):
         board = chess.Board(fen)
-
-        info = engine.analyse(board, chess.engine.Limit(depth=self.depth), multipv=top_n)
+        engine = self._open()
+        info = engine.analyse(board, chess.engine.Limit(depth=self.depth),
+                              multipv=top_n)
         engine.quit()
 
-        best_moves = []
+        best = []
         for entry in info:
             move = entry["pv"][0]
-            if move in board.legal_moves:
-                best_moves.append((board.san(move), entry["score"].relative.score()))
-            else:
-                best_moves.append((move.uci(), entry["score"].relative.score()))
+            score = entry["score"].relative.score()
+            best.append((board.san(move) if move in board.legal_moves else move.uci(),
+                         score))
+        return best
 
-        return best_moves
-
-    def board_to_fen(self, board, turn="W", castling="KQkq", en_passant="-", halfmove="0", fullmove="1"):
-        """
-        Convert a list-of-lists chess board into a FEN string.
-        """
+    # ------------------------------------------------------------------ #
+    def board_to_fen(self, board_2d, turn="W", castling="KQkq",
+                     en_passant="-", halfmove="0", fullmove="1"):
         piece_map = {
-            "RookW": "R", "KnightW": "N", "BishopW": "B", "QueenW": "Q", "KingW": "K", "PownW": "P",
-            "RookB": "r", "KnightB": "n", "BishopB": "b", "QueenB": "q", "KingB": "k", "PownB": "p"
+            "RookW": "R", "KnightW": "N", "BishopW": "B",
+            "QueenW": "Q", "KingW": "K", "PownW": "P",
+            "RookB": "r", "KnightB": "n", "BishopB": "b",
+            "QueenB": "q", "KingB": "k", "PownB": "p"
         }
 
-        if all(all(cell is None for cell in row) for row in board):
-            print("Error: The board is completely empty! Returning default starting position.")
-            return "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"  
+        if all(all(cell is None for cell in row) for row in board_2d):
+            # fallback to the initial position
+            return "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
         fen_rows = []
-        for row in board:
-            empty = 0
-            fen_row = ""
+        for row in board_2d:
+            run, fen_row = 0, ""
             for cell in row:
                 if cell is None:
-                    empty += 1
+                    run += 1
                 else:
-                    if empty > 0:
-                        fen_row += str(empty)
-                        empty = 0
-                    fen_row += piece_map[cell] if cell in piece_map else "?"
-            if empty > 0:
-                fen_row += str(empty)
+                    if run:
+                        fen_row += str(run)
+                        run = 0
+                    fen_row += piece_map.get(cell, "?")
+            if run:
+                fen_row += str(run)
             fen_rows.append(fen_row)
 
-        fen_board = "/".join(fen_rows[::-1])
-        turn_fen = "w" if turn == "W" else "b"
-        return f"{fen_board} {turn_fen} {castling} {en_passant} {halfmove} {fullmove}"
+        board_part = "/".join(fen_rows[::-1])
+        return f"{board_part} {'w' if turn == 'W' else 'b'} {castling} {en_passant} {halfmove} {fullmove}"
 
-
-    def evaluate_position(self, fen):
-        """
-        Use Stockfish to analyze a given FEN position and return evaluation.
-        """
-        try:
-            engine = chess.engine.SimpleEngine.popen_uci(self.stockfish_path)
-            board = chess.Board(fen)
-
-            info = engine.analyse(board, chess.engine.Limit(depth=self.depth))
-            engine.quit()
-
-            score = info["score"].relative
-            if score.is_mate():
-                mate_in = score.mate()
-                return f"{'White' if mate_in > 0 else 'Black'} is winning by checkmate in {abs(mate_in)} moves!"
-
-            return f"Evaluation: {score.score() / 100}"
-
-        except chess.engine.EngineTerminatedError:
-            return "Stockfish crashed! Check if your Stockfish path is correct."
-        except Exception as e:
-            return f"Unexpected error: {e}"
-
-
-    def evaluate_move(self, fen, move_uci):
-        """
-        Evaluates a specific move by comparing Stockfish's evaluation before and after the move.
-        """
-        engine = chess.engine.SimpleEngine.popen_uci(self.stockfish_path)
+    # ------------------------------------------------------------------ #
+    def evaluate_position(self, fen: str):
+        engine = self._open()
         board = chess.Board(fen)
-
-        info_before = engine.analyse(board, chess.engine.Limit(depth=self.depth))
-        score_before = info_before["score"].relative.score()
-
-        try:
-            move = chess.Move.from_uci(move_uci)
-            if move not in board.legal_moves:
-                return f"Illegal move: {move_uci}"
-            board.push(move)
-        except Exception as e:
-            return f"Invalid move format: {e}"
-
-        info_after = engine.analyse(board, chess.engine.Limit(depth=self.depth))
-        score_after = info_after["score"].relative.score()
+        info = engine.analyse(board, chess.engine.Limit(depth=self.depth))
         engine.quit()
 
-        best_after = self.get_best_moves(board.fen(), top_n=1)
-        best_move_after = best_after[0][0] if best_after else "Unknown"
+        score = info["score"].relative
+        if score.is_mate():
+            moves = abs(score.mate())
+            winner = "White" if score.mate() > 0 else "Black"
+            return f"{winner} mates in {moves}"
+        return f"Evaluation: {score.score() / 100:.2f}"
 
-        score_difference = score_after - score_before
-        analysis = f"Move: {move_uci} ({board.san(move) if move in board.legal_moves else move_uci})\n"
-        analysis += f"Evaluation before move: {score_before} centipawns\n"
-        analysis += f"Evaluation after move: {score_after} centipawns\n"
-        analysis += f"Score change: {score_difference} centipawns\n"
-        analysis += f"Best move after this position: {best_move_after}\n"
-
-        if score_difference > 50:
-            analysis += "Great move! It improves your position significantly. 👍"
-        elif score_difference > 0:
-            analysis += "Good move! Your position slightly improves. ✅"
-        elif score_difference > -50:
-            analysis += "Inaccuracy! The move is not the best but not a blunder. 🤔"
-        elif score_difference > -200:
-            analysis += "Mistake! The move worsens your position. ❌"
-        else:
-            analysis += "Blunder! This move loses significant advantage. 🚨"
-
-        return analysis
-
-    def tuple_to_uci(self, move_tuple):
+    def set_fen(self, board_2d, fen: str):
         """
-        Converts a tuple move ((row1, col1), (row2, col2)) to UCI notation.
+        In-place update of your 8×8 list-of-lists `board_2d`
+        to match *fen*.
+
+        board_2d comes from ChessBoard.board and contains either None or
+        string codes like 'RookW', 'PownB', ...
         """
-        def square_index(row, col):
-            return chess.square(col, 7 - row)
+        piece_rev = {
+            'R': 'RookW',   'N': 'KnightW', 'B': 'BishopW',
+            'Q': 'QueenW',  'K': 'KingW',   'P': 'PownW',
+            'r': 'RookB',   'n': 'KnightB', 'b': 'BishopB',
+            'q': 'QueenB',  'k': 'KingB',   'p': 'PownB'
+        }
 
-        from_square = square_index(*move_tuple[0])
-        to_square = square_index(*move_tuple[1])
+        rows = fen.split()[0].split('/')
+        if len(rows) != 8:
+            raise ValueError("Bad FEN for set_fen")
 
-        return chess.SQUARE_NAMES[from_square] + chess.SQUARE_NAMES[to_square]
+        # clear board
+        for r in range(8):
+            for c in range(8):
+                board_2d[r][c] = None
+
+        for fen_r, row_str in enumerate(rows):
+            board_r = 7 - fen_r          # FEN starts at rank 8
+            col = 0
+            for ch in row_str:
+                if ch.isdigit():
+                    col += int(ch)
+                else:
+                    board_2d[board_r][col] = piece_rev.get(ch, None)
+                    col += 1
+
+    # ------------------------------------------------------------------ #
+    def evaluate_move(self, fen: str, move_uci: str):
+        engine = self._open()
+        board = chess.Board(fen)
+
+        before = engine.analyse(board, chess.engine.Limit(depth=self.depth))
+        score_before = before["score"].relative.score()
+
+        move = chess.Move.from_uci(move_uci)
+        if move not in board.legal_moves:
+            engine.quit()
+            return f"Illegal move: {move_uci}"
+
+        board.push(move)
+        after = engine.analyse(board, chess.engine.Limit(depth=self.depth))
+        engine.quit()
+
+        score_after = after["score"].relative.score()
+        diff = score_after - score_before
+
+        best_reply = self.get_best_moves(board.fen(), 1)[0][0]
+        verdict = ("Great move! 👍"   if diff >  50 else
+                   "Good move! ✅"    if diff >   0 else
+                   "Inaccuracy 🤔"    if diff > -50 else
+                   "Mistake ❌"       if diff > -200 else
+                   "Blunder 🚨")
+
+        return (f"{board.san(move)} ({move_uci})\n"
+                f"Δ = {diff:+} cp\n"
+                f"Best reply: {best_reply}\n"
+                f"{verdict}")
+
+    # ------------------------------------------------------------------ #
+    @staticmethod
+    def tuple_to_uci(move_tuple):
+        """((row, col), (row, col))  ->  \"e2e4\" (0-based rows/cols)."""
+        def sq(r, c):
+            return chess.square(c, 7 - r)
+        return chess.square_name(sq(*move_tuple[0])) + chess.square_name(sq(*move_tuple[1]))
