@@ -1,9 +1,8 @@
 import pygame
 import sys
 import os
-import re
+import re, json
 from termcolor import colored
-from CTkMessagebox import CTkMessagebox
 
 from frames.assets.button import Button, RadioButton
 from frames.assets.textBoxInput import TextInputBox
@@ -11,6 +10,9 @@ from frames.assets.textBoxInput import TextInputBox
 from chess_board import ChessBoard
 from player import Player
 from helper import Helper
+
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import hashes
 
 from base_page import BasePage
 
@@ -23,6 +25,8 @@ class InviteFriendPage(BasePage):
         super().__init__(manager)
 
         self.key =  key
+        self.status_text = ""         
+
         
         self.client = client
         self.font_20 = self.get_font("frames/assets/font.ttf", 20)
@@ -56,11 +60,32 @@ class InviteFriendPage(BasePage):
                     self.manager.set_current_page("PlayPage", self.client)
                 elif self.invite_button.checkForInput(mouse_pos):
                     friend_name = self.friend_input.text.strip()
-                    if friend_name:
-                        self.game_state.friend_name_to_invite = friend_name
-                        self.manager.set_current_page("WaitingPageFriend", self.client, self.key)
-                    else:
+                    if not friend_name:
                         self.error_message = "Please enter a friend's name!"
+                        continue
+
+                    self.game_state.friend_name_to_invite = friend_name
+
+
+                    self._send_enc({
+                        "type": "send_game_request",
+                        "to": friend_name,
+                        "time_format": self.game_state.selected_time_format 
+                    })
+
+                    ack = json.loads(self.client.recv(4096).decode())
+
+                    if ack.get("success"):
+                        self.status_text = "Request sent!"
+                        # jump to waiting page
+                        self.manager.set_current_page("WaitingPageFriend",
+                                                      self.client, key=self.key)
+                    else:
+                        self.status_text = ack.get("msg", "Request failed")
+
+
+                    self.manager.set_current_page("WaitingPageFriend",
+                                                      self.client, key=self.key)
 
             for box in self.input_boxes:
                 box.handle_event(event)
@@ -121,4 +146,21 @@ class InviteFriendPage(BasePage):
         if self.error_message:
             err_surf = self.font_20.render(self.error_message, True, (255,0,0))
             err_rect = err_surf.get_rect(center=(640, 700))
+
             self.screen.blit(err_surf, err_rect)
+        
+        if self.status_text:
+            msg_surf = self.get_font("frames/assets/font.ttf", 24).render(
+                self.status_text, True, (220, 50, 50))
+            self.screen.blit(msg_surf,
+                             msg_surf.get_rect(center=(640, 560)))
+        
+    def _send_enc(self, obj: dict):
+        raw = json.dumps(obj).encode()
+        enc = self.key.encrypt(
+            raw,
+            padding.OAEP(mgf=padding.MGF1(hashes.SHA256()),
+                         algorithm=hashes.SHA256(),
+                         label=None)
+        )
+        self.client.send(enc)

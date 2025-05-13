@@ -53,6 +53,30 @@ class DatabaseHandler:
             );
             """
         )
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS friend_requests (
+                id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                sender   TEXT NOT NULL,
+                receiver TEXT NOT NULL,
+                status   TEXT NOT NULL CHECK (status IN ('pending', 'accepted', 'rejected')),
+                UNIQUE(sender, receiver)
+            );
+            """)
+        
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS game_requests (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                sender      TEXT NOT NULL,
+                receiver    TEXT NOT NULL,
+                time_format TEXT NOT NULL,                 -- e.g. "5+3"
+                status      TEXT NOT NULL
+                      CHECK(status IN ('pending','accepted','rejected')),
+                UNIQUE(sender, receiver, status)           -- prevent spam
+            );
+            """)
+
+
         connection.commit()
         connection.close()
 
@@ -185,3 +209,136 @@ class DatabaseHandler:
             'as_black_d': row[10],
             'as_black_l': row[11]
         }
+    
+    # ─────────────────────────────────────────────────────────────
+    # Friend-request helpers
+    # ─────────────────────────────────────────────────────────────
+    def send_friend_request(self, sender: str, receiver: str) -> bool:
+        """
+        Insert a new pending request sender → receiver.
+        Return False if self-request, already friends, or duplicate.
+        """
+        if sender == receiver:
+            return False
+    
+        with sqlite3.connect(self.db_path) as c:
+            # already friends?
+            cur = c.execute("SELECT friends FROM users WHERE username=?", (sender,))
+            row = cur.fetchone()
+            if not row:
+                return False
+            friends = json.loads(row[0] or "[]")
+            if receiver in friends:
+                return False
+    
+            try:
+                c.execute("INSERT INTO friend_requests(sender, receiver, status) "
+                          "VALUES (?,?, 'pending')", (sender, receiver))
+                return True
+            except sqlite3.IntegrityError:
+                return False   # duplicate request
+    
+    
+    def get_pending_requests(self, username: str) -> list[str]:
+        """Return a list of usernames who sent requests to *username*."""
+        with sqlite3.connect(self.db_path) as c:
+            cur = c.execute(
+                "SELECT sender FROM friend_requests "
+                "WHERE receiver=? AND status='pending'", (username,))
+            return [r[0] for r in cur.fetchall()]
+    
+    
+    def accept_request(self, sender: str, receiver: str) -> None:
+        """Mark request accepted and add each user to the other’s friends list."""
+        with sqlite3.connect(self.db_path) as c:
+            c.execute("UPDATE friend_requests SET status='accepted' "
+                      "WHERE sender=? AND receiver=?", (sender, receiver))
+    
+            for a, b in ((sender, receiver), (receiver, sender)):
+                cur = c.execute("SELECT friends FROM users WHERE username=?", (a,))
+                friends = json.loads(cur.fetchone()[0] or "[]")
+                if b not in friends:
+                    friends.append(b)
+                c.execute("UPDATE users SET friends=? WHERE username=?",
+                          (json.dumps(friends), a))
+    
+    
+    def reject_request(self, sender: str, receiver: str) -> None:
+        """Simply mark the request as rejected."""
+        with sqlite3.connect(self.db_path) as c:
+            c.execute("UPDATE friend_requests SET status='rejected' "
+                      "WHERE sender=? AND receiver=?", (sender, receiver))
+    
+        # ─────────────────────────────────────────────────────────────
+    # Friend-game request helpers
+    # ─────────────────────────────────────────────────────────────
+    def send_game_request(self, sender: str, receiver: str,
+                          time_format: str) -> bool:
+        if sender == receiver:
+            return False
+        with sqlite3.connect(self.db_path) as c:
+            # must already be friends
+            cur = c.execute("SELECT friends FROM users WHERE username=?", (sender,))
+            row = cur.fetchone()
+            if not row:
+                return False
+            friends = json.loads(row[0] or "[]")
+            if receiver not in friends:
+                return False
+            try:
+                c.execute("""
+                    INSERT INTO game_requests(sender, receiver, time_format, status)
+                    VALUES (?,?,?, 'pending')
+                """, (sender, receiver, time_format))
+                return True
+            except sqlite3.IntegrityError:
+                return False
+    
+    
+    def get_pending_game_requests(self, username: str) -> list[dict]:
+        """Return list of {sender, time_format} dicts."""
+        with sqlite3.connect(self.db_path) as c:
+            cur = c.execute("""
+                SELECT sender, time_format
+                FROM game_requests
+                WHERE receiver=? AND status='pending'
+            """, (username,))
+            return [{"sender": r[0], "time_format": r[1]} for r in cur.fetchall()]
+    
+    
+    def accept_game_request(self, sender: str, receiver: str) -> str | None:
+        with sqlite3.connect(self.db_path) as c:
+            # 1) fetch time-format of the pending request
+            cur = c.execute("""
+                SELECT time_format FROM game_requests
+                WHERE sender=? AND receiver=? AND status='pending'
+            """, (sender, receiver))
+            row = cur.fetchone()
+            if not row:
+                return None
+            time_format = row[0]
+    
+            # 2) remove any previous 'accepted' rows for the same two users
+            c.execute("""
+                DELETE FROM game_requests
+                WHERE sender=? AND receiver=? AND status='accepted'
+            """, (sender, receiver))
+    
+            # 3) mark THIS row as accepted
+            c.execute("""
+                UPDATE game_requests
+                SET status='accepted'
+                WHERE sender=? AND receiver=? AND status='pending'
+            """, (sender, receiver))
+    
+            return time_format
+
+    
+    
+    def reject_game_request(self, sender: str, receiver: str) -> None:
+        with sqlite3.connect(self.db_path) as c:
+            c.execute("""
+                UPDATE game_requests SET status='rejected'
+                WHERE sender=? AND receiver=? AND status='pending'
+            """, (sender, receiver))
+    
