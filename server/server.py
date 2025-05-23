@@ -105,6 +105,8 @@ class ChessServer:
     # ──────────────────────────────────────────────────────────────
     #               MAIN MESSAGE LOOP
     # ──────────────────────────────────────────────────────────────
+
+    
     def _main_loop(self, sock):
        while True:
            msg = self._recv_json(sock)
@@ -269,7 +271,7 @@ class ChessServer:
         Put *sock* in the appropriate queue.
 
         › game_type == "Random"      →   use the global random queue  
-        › game_type == "friend_game" →   pair with   friend_username
+        › game_type == "friend_game" →   pair with friend_username
         """
         self.clients[sock].set_status(f"waiting:{time_format}")
         opp = next((s for s, p in self.clients.items()
@@ -348,7 +350,7 @@ class ChessServer:
             "to":   data["to"],
             "clock": data.get("clock")
         }
-        if "fen" in data:                 # include latest snapshot
+        if "fen" in data:                 
             packet["fen"] = data["fen"]
             info["fen"] = data["fen"]
 
@@ -360,7 +362,7 @@ class ChessServer:
         for spec in list(info["spectators"]):
             try:
                 self._send_json(spec, packet)
-            except OSError:               # drop dead sockets
+            except OSError:               
                 info["spectators"].remove(spec)
 
         info["current_turn"] = "black" if mover == "white" else "white"

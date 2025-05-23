@@ -68,10 +68,6 @@ class MainMenuPage(BasePage):
                 elif self.quit_button.checkForInput(mouse_pos):
                     pygame.quit()
                     sys.exit()
-                
-                elif self.play_friend_button.checkForInput(mouse_pos):
-                    self.manager.set_current_page("InviteFriendPage",
-                                  client=self.client, key=self.key)
 
                 elif self.signout_button.checkForInput(mouse_pos):
                     self.client.close()  # Close socket on signout

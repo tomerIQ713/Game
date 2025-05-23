@@ -44,6 +44,7 @@ class LoginPage(BasePage):
                     self.try_login()
             for box in self.input_boxes:
                 box.handle_event(e)
+                
     def try_login(self):
         if not self.username_box.text or not self.password_box.text:
             self.error_message = "All fields are required!"
