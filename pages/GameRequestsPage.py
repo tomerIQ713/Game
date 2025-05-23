@@ -33,15 +33,24 @@ class GameRequestsPage(BasePage):
     # ──────────────────────────────── helpers
     def get_font(self, path, size): return pygame.font.Font(path, size)
 
+    # inside GameRequestsPage  – replace the old helper
     def _send_enc(self, obj):
-        self.client.send(
-            self.key.encrypt(
-                json.dumps(obj).encode(),
-                padding.OAEP(mgf=padding.MGF1(hashes.SHA256()),
-                             algorithm=hashes.SHA256(),
-                             label=None)
+        raw = json.dumps(obj, separators=(',', ':')).encode()
+    
+        if self.key is not None:
+            enc = self.key.encrypt(
+                raw,
+                padding.OAEP(
+                    mgf=padding.MGF1(hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None,
+                )
             )
-        )
+            self.client.send(enc)
+        else:
+            # fall back to plain JSON so we never crash
+            self.client.send(raw)
+    
 
     # request the list (non-blocking)
     def _ask_server_for_list(self):
@@ -91,20 +100,18 @@ class GameRequestsPage(BasePage):
 
     def _reply(self, sender, tfmt, accept):
         self._send_enc({"type": "respond_game_request",
-                        "from_user": sender,
-                        "accept":   accept})
-        # we’ll get {"type":"respond_game_ack", …} asynchronously,
-        # but nothing in the UI depends on it – we can act right away.
+                        "from_user": sender, "accept": accept})
+
         if accept:
             gs = self.game_state
             gs.friend_name_to_invite = sender
             gs.selected_time_format  = tfmt
             gs.selected_game_type    = "Play a friend"
+            gs.is_inviter            = False     #  NEW LINE
 
             self.manager.set_current_page("WaitingPageFriend",
                                           self.client, key=self.key)
         else:
-            # just flag a notice; server will later pop the request anyway
             self.notice = "Rejected!"
             self.notice_time = pygame.time.get_ticks()
 
@@ -120,6 +127,7 @@ class GameRequestsPage(BasePage):
                 return
             try:
                 chunk = self.client.recv(4096).decode("utf-8", "replace")
+                print("[DEBUG] raw chunk:", chunk)       # ← add line
             except BlockingIOError:
                 return
 
@@ -131,7 +139,7 @@ class GameRequestsPage(BasePage):
                 if pkt.get("type") == "game_requests":
                     self.pending = pkt.get("list", [])
                     self._rebuild_buttons()
-                    self.awaiting_list = False    # done!
+                    self.awaiting_list = False   
 
     def draw(self):
         th = [{"bg": (0,0,0), "text": (255,255,255)},

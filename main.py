@@ -1,6 +1,8 @@
 import pygame
 import logging
 
+### BUG: Friend vs Friend ###
+
 from page_manager import PageManager
 from pages.login_page import LoginPage
 from pages.main_menu_page import MainMenuPage
@@ -18,6 +20,8 @@ from pages.SpectateLobbyPage import SpectateLobbyPage
 from pages.SpectateGamePage import SpectateGamePage
 from pages.FriendRequstPage import FriendRequestsPage
 from pages.GameRequestsPage import GameRequestsPage
+from pages.AnalysisPage import AnalysisPage
+
 
 def main():
     pygame.init()
@@ -40,6 +44,8 @@ def main():
     manager.register_page("SpectateGamePage", SpectateGamePage)
     manager.register_page("FriendRequestsPage", FriendRequestsPage)
     manager.register_page("GameRequestsPage", GameRequestsPage)
+    manager.register_page("AnalysisPage", AnalysisPage)
+    
 
 
     manager.set_current_page("LoginPage")

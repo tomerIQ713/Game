@@ -41,10 +41,10 @@ class FriendRequestsPage(BasePage):
             self.buttons.append((
                 name,
                 Button(image=None, pos=(500, y),
-                       text_input="✔", font=self.font,
+                       text_input="Accept", font=self.font,
                        base_color="White", hovering_color="Green"),
                 Button(image=None, pos=(780, y),
-                       text_input="✖", font=self.font,
+                       text_input="No.", font=self.font,
                        base_color="White", hovering_color="Red")
             ))
             y += 70

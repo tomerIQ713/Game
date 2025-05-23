@@ -8,11 +8,11 @@ class ChessEngine:
     """
     Thin wrapper around a local Stockfish binary.
 
-    • get_best_moves      – top-N moves with centipawn scores
-    • board_to_fen        – convert your own 2-D list representation → FEN
-    • evaluate_position   – Stockfish evaluation or mate announcement
-    • evaluate_move       – delta score, best reply, friendly labels
-    • tuple_to_uci        – ((row1, col1), (row2, col2)) -> \"e2e4\"
+    • get_best_moves      - top-N moves with centipawn scores
+    • board_to_fen        - convert your own 2-D list representation → FEN
+    • evaluate_position   - Stockfish evaluation or mate announcement
+    • evaluate_move       - delta score, best reply, friendly labels
+    • tuple_to_uci        - ((row1, col1), (row2, col2)) -> \"e2e4\"
     """
 
     # ------------------------------------------------------------------ #
@@ -141,7 +141,7 @@ class ChessEngine:
             engine.quit()
             return f"Illegal move: {move_uci}"
 
-        board.push(move)
+        board.push(move)    
         after = engine.analyse(board, chess.engine.Limit(depth=self.depth))
         engine.quit()
 
