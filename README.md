@@ -21,7 +21,7 @@
 
 ## Installation
 
-- Download the folders.
+- Download the files.
 - Run the `install_dependencies.bat` file to download the necessary libraries.
 - Download Stockfish from `https://stockfishchess.org/download/`
 - Unzip the Stockfish file
