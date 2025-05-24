@@ -11,9 +11,7 @@
 -  Post-game analysis with Stockfish (best move suggestions and mistakes)
 -  Full chess rule support: castling, en passant, promotion, and checkmate
 -  Clean and responsive Pygame GUI
--  Match history and replay functionality
 -  Add friends and challenge them
--  Optional in-game chat
 
 ## Technologies Used
 
@@ -27,6 +25,10 @@
 
 - Download the folders.
 - Run the `install_dependencies.bat` file to download the necessary libraries.
+- Download Stockfish from `https://stockfishchess.org/download/`
+- Unzip the Stockfish file
+- Move the Stockfish folder into the `Game` folder.
+- Rename the file that ends with `.exe` to `stockfish.exe`
 
 
 
