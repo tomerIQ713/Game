@@ -26,7 +26,7 @@
 - Download Stockfish from `https://stockfishchess.org/download/`
 - Unzip the Stockfish file
 - Move the Stockfish folder into the `Game` folder.
-- Rename the file that ends with `.exe` to `stockfish.exe`
+- In the `Stockfish` folder, Rename the file that ends with `.exe` to `stockfish.exe`
 
 
 
