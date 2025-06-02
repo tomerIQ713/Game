@@ -35,14 +35,16 @@
   - In `server/server.py` Replace the IP adress in the `__init__` function with your IP adress.
 
   **AS A CLIENT**
-  - in the `pages` folder, open the `login_page.py` file, and replace the IP in the `__init__` function with the server IP.
+  - In the `pages` folder, open the `login_page.py` file, and replace the IP in the `__init__` function with the server IP.
 
 
 ## How to play
 - Open the `Game` folder in VS-Code or any other python compiler.
 - Open the `server` folder and run the `server.py` file.
 - In the main path, run `main.py` file.
-- **If you want to have another player against you**, run the `main.py` file again, in the other computer. **Make sure you write the IP address correctly**.
+- **If you want to have another player against you**, run the `main.py` file again, in the other computer or in yours.
+- Keep in mind, if you run the server and 2 clients on one PC, it can have a strain on your computer.
+  **Make sure you write the IP address correctly**.
 
 
 
