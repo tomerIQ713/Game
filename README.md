@@ -44,7 +44,8 @@
 - In the main path, run `main.py` file.
 - **If you want to have another player against you**, run the `main.py` file again, in the other computer or in yours.
 - Keep in mind, if you run the server and 2 clients on one PC, it can have a strain on your computer.
-  **Make sure you write the IP address correctly**.
+
+**Make sure you write the IP address correctly**.
 
 
 
