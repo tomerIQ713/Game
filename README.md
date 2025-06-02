@@ -29,5 +29,12 @@
 - In the `Stockfish` folder, Rename the file that ends with `.exe` to `stockfish.exe`
 
 
+## How to play
+- Open the `Game` folder in VS-Code or any other python compiler.
+- Open the `server` folder and run the `server.py` file.
+- In the main path, run `main.py` file.
+- **If you want to have another player against you**, run the `main.py` file again, in the other computer. **Make sure you write the IP address correctly**.
+
+
 
 
