@@ -31,7 +31,7 @@
 ## SETUP
   **AS A SERVER** 
   - In wherever computer you want to run the server in,
-    check its **IP adress** using the command `ipconfig` in the `CMD`.
+    check its **IP adress** using the command `ipconfig`.
   - In `server/server.py` Replace the IP adress in the `__init__` function with your IP adress.
 
   **AS A CLIENT**
