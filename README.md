@@ -30,8 +30,9 @@
 
 ## SETUP
   **AS A SERVER** 
-  - In wherever computer you want to run the server in, check its **IP adress** using the command `ipconfig` in the `CMD`.
-  - Replace the IP adress in the `__init__` function with your IP adress.
+  - In wherever computer you want to run the server in,
+    check its **IP adress** using the command `ipconfig` in the `CMD`.
+  - In `server/server.py` Replace the IP adress in the `__init__` function with your IP adress.
 
   **AS A CLIENT**
   - in the `pages` folder, open the `login_page.py` file, and replace the IP in the `__init__` function with the server IP.
