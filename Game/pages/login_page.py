@@ -27,7 +27,7 @@ class LoginPage(BasePage):
 
         self.client = socket.socket()
         print(1)
-        self.client.connect(("192.168.1.201", 5555))
+        self.client.connect(("127.0.0.1", 5555))
         print(2)
         self.public_key = serialization.load_pem_public_key(self.client.recv(4096))
 
@@ -217,3 +217,4 @@ class LoginPage(BasePage):
             err_surf = err_font.render(self.error_message, True, (255, 0, 0))
             err_rect = err_surf.get_rect(center=(640, 550))
             self.screen.blit(err_surf, err_rect)
+
