@@ -21,7 +21,7 @@ class ChessServer:
         logging.basicConfig(filename="app.log",
                             level=logging.DEBUG,
                             format="%(asctime)s | %(levelname)s | %(message)s")
-        self.host, self.port = "192.168.1.201", 5555
+        self.host, self.port = "127.0.0.1", 5555
         self.server_socket = None
         self.db = DatabaseHandler()
 
@@ -479,3 +479,4 @@ class ChessServer:
 
 if __name__ == "__main__":
     ChessServer().start_server()
+
